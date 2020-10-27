@@ -1,5 +1,5 @@
 # TeamPython
-This repository contains our model, which includes a model to pull Tweeter data using the API, and a model for classifying Twitter's users
+This repository contains our model, which includes a model to pull Twitter data using the API, and a model for classifying Twitter's users
 location from information such as profile images, banner images, bio information, profile name, and recent user tweets. 
 
 # Documentation
