@@ -42,7 +42,7 @@ def normalize_data(data):
 
 ## Tweet Embedding Stage:
 
-get tweets from dataframe
+Get tweets from dataframe
 ```python
 def get_tweets_list(df):
   all_tweets = []
@@ -53,7 +53,7 @@ def get_tweets_list(df):
   print('tweets extracted')
   return all_tweets,s_name
 ```
-input list of tweets with structure as [[tweet, screen_name],[tweet, screen_name],[tweet, screen_name],...]
+Input list of tweets with structure as [[tweet, screen_name],[tweet, screen_name],[tweet, screen_name],...]
 ```python
 def get_bert_embeddings(tweet_list):
   model_path = "/content/drive/My Drive/dataset/multilingual_model"
@@ -61,7 +61,7 @@ def get_bert_embeddings(tweet_list):
   print('embeddings complete')
   return(embeddings)
 ```
-mean pool the the embeddings to return 768 embeddings per sentence
+Mean pool the the embeddings to return 768 embeddings per sentence
 ```python
 def avg_pooling(embed_array):
   embeddings_pooled = []
@@ -75,50 +75,66 @@ def avg_pooling(embed_array):
 Reading images from URLs
 ```python
 def read_images(dataframe):
-  profile = []
-  banner = []
-  working_sname = []
-  success = True
-  start = time.time()
-  for num in tqdm(range(2000)):
-    image_url = dataframe.iloc[num]["image_url"]
-    banner_url = dataframe.iloc[num]["banner_url"]
-    try:
-      profile.append((Image.open(requests.get(image_url, stream=True).raw).convert('RGB')))
-      success = True
-    except:
-      success = False
-      pass
-    if success:
-      try:
-        banner.append((Image.open(requests.get(banner_url, stream=True).raw).convert('RGB')))
-        working_sname.append(dataframe.iloc[num]["screen_name"])
-      except:
-        del profile[-1]
-        success = False
-        pass
+    counter =list(range(0,len(dataframe), int(len(dataframe)/3)))
+    working_sname = []
+    for i in range(3): 
+        count = counter[1]
+        pop = counter.pop(0)
+        print(f"Range for this iteration is {pop}, {count}")
+        profile = []
+        banner = []
+        success = True
+        start = time.time()
+        for num in tqdm(range(pop,count)):
+            image_url = dataframe.iloc[num]["image_url"]
+            banner_url = dataframe.iloc[num]["banner_url"]
+            try:
+                profile.append(np.asarray(Image.open(requests.get(image_url, stream=True).raw).convert('RGB')))
+                print(getsizeof(profile))
+                success = True
+            except:
+                success = False
+                pass
+            if success:
+                try:
+                    banner.append(np.asarray(Image.open(requests.get(banner_url, stream=True).raw).convert('RGB')))
+                    print(getsizeof(banner))
+                    working_sname.append(dataframe.iloc[num]["screen_name"])
+                except:
+                    del profile[-1]
+                    success = False
+                    pass
+        np.save("profile"+str(i), profile)
+        np.save("banner"+str(i), banner)
 
-  print(f"/n {len(working_sname)} images have been read")
-  return(profile, banner,working_sname)
+    print(f"{len(working_sname)} images have been read")
+    return(working_sname,banner,profile)
 ```
-extract image embeddings
+Preparing the embedding model
+```
+def get_image_model():
+    #define new feature embedding model
+    source_model = EfficientNetB0(weights='imagenet')
+    test_model = source_model.layers[-3].output
+    predictions = keras.layers.Dense(1280)(test_model)
+    image_embedding_model = keras.Model(inputs = source_model.input, outputs = predictions)
+    return(image_embedding_model)
+```
+Extract image embeddings
 ```python 
-def image_embeddings(model_name, image_list):
-  model_name = 'efficientnet-b6'
-  image_size = EfficientNet.get_image_size(model_name)
-  tfms = transforms.Compose([transforms.Resize(image_size), transforms.CenterCrop(image_size), 
-                          transforms.ToTensor(),
-                          transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),])
-  model = EfficientNet.from_pretrained(model_name)
-  embedding_list = []
-  for image in tqdm(image_list):
-    image = tfms(image).unsqueeze(0)
-    with torch.no_grad():
-        features = model.extract_features(image)
-        features = model._avg_pooling(features)
-        features = torch.squeeze(features)
-        features = np.asarray(features)
-        embedding_list.append(features)
-  print("embeddings complete")
-  return(embedding_list)
+def image_embeddings_keras(image_list,model):
+    image_size = model.input_shape[1]
+    cursor = 0
+    embed_list = []
+    for i in tqdm(range(len(image_list))):
+        image =np.asarray(image_list[i])
+        x = center_crop_and_resize(image, image_size=image_size)
+        x = preprocess_input(x)
+        embed_list.append(x)
+    print("preprocessing complete")
+    #complete all embeddings 
+    start = time.time()
+    final_array = model.predict(np.array(embed_list[0:]))
+    print(f"embedding extracted in {time.time()-start}")
+    return(final_array)
 ```
