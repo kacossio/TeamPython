@@ -150,5 +150,5 @@ def model_flow(model_name, num_countries, input_shape):
     x = layers.Dropout(0.15)(x)
     outputs = layers.Dense(num_countries, activation="softmax",name="predictions")(x)
     model = keras.Model(inputs=inputs, outputs=outputs, name=model_name)
-    return model
+    return(model)
 ```
