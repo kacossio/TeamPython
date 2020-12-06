@@ -138,3 +138,17 @@ def image_embeddings_keras(image_list,model):
     print(f"embedding extracted in {time.time()-start}")
     return(final_array)
 ```
+## Fully connected model:
+Function for model flow
+```
+def model_flow(model_name, num_countries, input_shape):
+    inputs = keras.Input(shape=(input_shape), name="Combined_inputs")
+    x = layers.Dense(64, activation="relu", name="dense_1")(inputs)
+    x = layers.BatchNormalization(name="normalization_1")(x)
+    x = layers.Dense(32, activation="relu",name="dense_2")(x)
+    x = layers.Dense(16, activation=tf.keras.layers.LeakyReLU(alpha=0.2), name="dense_3")(x)
+    x = layers.Dropout(0.15)(x)
+    outputs = layers.Dense(num_countries, activation="softmax",name="predictions")(x)
+    model = keras.Model(inputs=inputs, outputs=outputs, name=model_name)
+    return model
+```
